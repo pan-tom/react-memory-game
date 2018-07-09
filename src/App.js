@@ -56,6 +56,7 @@ class App extends Component {
 			const value = Number(event.target.value);
 			this.numBoardItems = value;
 			this.gameReset();
+			this.timerStop();
 		}
 	};
 
