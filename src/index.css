@@ -12,6 +12,14 @@ h1 {
 	font-weight: normal;
 }
 
+button {
+	cursor: pointer;
+	background: none;
+	border: none;
+	margin: 5px 0;
+	padding: 5px 10px;
+}
+
 #select {
 	margin: 5px 0;
 	text-align: center;
@@ -79,12 +87,8 @@ h1 {
 	cursor: default;
 }
 
-#result {
+#restart, #result {
 	text-align: center;
 	font-size: 14px;
 	line-height: 20px;
-}
-#result a {
-	cursor: pointer;
-	text-decoration: underline;
 }

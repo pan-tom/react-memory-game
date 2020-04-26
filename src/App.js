@@ -1,113 +1,132 @@
 import React, { Component } from 'react';
-import shuffle from 'shuffle-array';
 import Easytimer from 'easytimer.js';
 
 import Board from './Board';
+import RestartButton from './RestartButton';
+import Layout from './Layout';
+import NumItemsSelection from './NumItemsSelection';
 import Result from './Result';
+
+import { generateBoardMap } from './utils';
+
+const timer = new Easytimer();
+const timerStart = () => timer.start();
+const timerStop = () => timer.stop();
+
+const NUM_BOARD_ITEMS = 6;
+const initialState = {
+	boardMap: generateBoardMap(NUM_BOARD_ITEMS),
+	clickStack: [],
+	finished: false,
+	isSelectOn: true,
+	numBoardItems: NUM_BOARD_ITEMS,
+	numDone: 0,
+	numFailures: 0,
+	time: '00:00:00',
+};
 
 class App extends Component {
 
-	generateBoardMap = (num) => {
-		return shuffle(Array.from(Array(num).keys()).map((val, i) => {
-			return {
-				id: i+1,
-				value: Math.floor(i/2) + 1,
-				status: '' // ['', 'opened', 'done']
-			}
+	constructor() {
+		super();
+		this.state = initialState;
+	};
+
+	timeInterval = () => this.setState({
+		time: timer.getTimeValues().toString(),
+	});
+
+	componentDidMount() {
+		timer.addEventListener('secondsUpdated', this.timeInterval);
+	};
+
+	componentWillUnmount() {
+		timer.removeEventListener('secondsUpdated', this.timeInterval);
+	};
+
+	setAppState = (state, callback) => this.setState(state, callback);
+
+	resetGame = () => {
+		this.setState(prevState => ({
+			...initialState,
+			numBoardItems: prevState.numBoardItems,
+			boardMap: generateBoardMap(prevState.numBoardItems),
 		}));
-	}
-
-	numBoardItems = 6;
-
-	initialState = {
-		selectOn: true,
-		numBoardItems: this.numBoardItems,
-		boardMap: this.generateBoardMap(this.numBoardItems),
-		clickStack: [],
-		failures: 0,
-	  	numDone: 0,
-	  	time: '00:00:00',
-	  	finished: false
-	}
-
-	timer = new Easytimer();
-
-	timerStart = () => this.timer.start();
-
-	timerStop = () => this.timer.stop();
-
-	incrementFailures = () => this.setState({failures: this.state.failures+1});
-
-	setSelectOn = () => this.setState({selectOn: (this.state.numDone === 0 && !this.state.clickStack.length) || this.state.finished});
-
-	finish = () => this.setState({finished: true}, this.setSelectOn);
-
-	setAppState = (state, callback = null) => this.setState(state, callback);
-
-	gameReset = () => {
-		const state = this.initialState;
-		state.numBoardItems = this.numBoardItems;
-		state.boardMap = this.generateBoardMap(this.numBoardItems);
-		this.setState(state);
+		timerStop();
 	};
 
 	setNumBoardItems = event => {
-		if((this.state.numDone === 0 && !this.state.clickStack.length) || this.state.finished) {
-			const value = Number(event.target.value);
-			this.numBoardItems = value;
-			this.gameReset();
-			this.timerStop();
+		const { numDone, clickStack, finished } = this.state;
+		if((numDone === 0 && !clickStack.length) || finished) {
+			this.setState({
+				numBoardItems: Number(event.target.value)
+			}, () => {
+				this.resetGame();
+			});
+			timerStop();
 		}
 	};
 
-	constructor() {
-		super();
-		this.state = this.initialState;
-		this.timer.addEventListener('secondsUpdated', e => {
-			this.setState({
-			   	time: this.timer.getTimeValues().toString()
-			});
-		});
-	};
+	incrementFailures = () => this.setState(prevState => ({
+		numFailures: prevState.numFailures + 1
+	}));
+
+	setSelectOn = () => this.setState({
+		isSelectOn: (this.state.numDone === 0 && !this.state.clickStack.length)
+			|| this.state.finished,
+	});
+
+	finish = () => this.setState({finished: true}, this.setSelectOn);
 
 	render() {
-
+		const {
+			boardMap,
+			clickStack,
+			finished,
+			numBoardItems,
+			numDone,
+			numFailures,
+			isSelectOn,
+			time,
+		} = this.state;
+		
 		return (
-			<div>
-				<h1>ReactJS Memory Game demo</h1>
-				<div id="select">
-					Number of elements: <select onChange={this.setNumBoardItems} disabled={!this.state.selectOn}>
-						<option value="6">06</option>
-						<option value="12">12</option>
-						<option value="18">18</option>
-						<option value="24">24</option>
-						<option value="30">30</option>
-						<option value="36">36</option>
-					</select>
-				</div>
+			<Layout>
+
+				<NumItemsSelection
+					onChange={this.setNumBoardItems}
+					disabled={!isSelectOn}
+				/>
+
 	  			<Board
-	  				numBoardItems={this.state.numBoardItems}
-	  				boardMap={this.state.boardMap}
-	  				clickStack={this.state.clickStack}
+	  				numBoardItems={numBoardItems}
+	  				boardMap={boardMap}
+	  				clickStack={clickStack}
 	  				setSelectOn={this.setSelectOn}
-	  				timerStart={this.timerStart}
-	  				timerStop={this.timerStop}
-	  				failures={this.state.failures}
+	  				timerStart={timerStart}
+	  				timerStop={timerStop}
 	  				incrementFailures={this.incrementFailures}
-	  				numDone={this.state.numDone}
+	  				numDone={numDone}
 	  				finish={this.finish}
 	  				setAppState={this.setAppState}
 	  			/>
+
 	  			<Result
-	  				failures={this.state.failures}
-	  				time={this.state.time}
-	  				finished={this.state.finished}
-	  				gameReset={this.gameReset}
+	  				numFailures={numFailures}
+	  				time={time}
+	  				finished={finished}
+	  				resetGame={this.resetGame}
 	  			/>
-	  		</div>
+
+				{!finished && <RestartButton
+					disabled={!numFailures && !numDone}
+					onClick={this.resetGame}
+				/>}
+
+	  		</Layout>
 		);
 	};
 
-}
+};
 
 export default App;
